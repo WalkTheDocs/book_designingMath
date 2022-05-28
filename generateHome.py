@@ -28,7 +28,7 @@ HTML_DOCUMENT = Template("""
 
 </html>
 """)
-HTML_LINK = Template('<a href="./$chapter/$ch/index.html">$ch</a>')
+CHAPTER_LINK = Template('<a href="./$chapter/$ch/index.html">$ch</a>')
 
 
 def wrapWith(tag: str, children: Union[List[str], str]) -> str:
@@ -42,6 +42,23 @@ def wrapWith(tag: str, children: Union[List[str], str]) -> str:
     return output
 
 
+def makeExercisesHtml(chapter_dir: str) -> Union[None, str]:
+    EXERCISE_LINK = Template(
+        '<a href="./$chapter/exercises/$exercise/index.html">$exercise</a>')
+
+    exercises_dir = [d for d in os.listdir(chapter_dir)
+                     if d == 'exercises']
+    if len(exercises_dir):
+        exercise_dir = exercises_dir[0]
+        exercise_links = [EXERCISE_LINK.substitute(chapter=chapter_dir, exercise=exercise)
+                          for exercise in os.listdir(os.path.join(chapter_dir, exercise_dir))]
+        exercise_html = wrapWith(
+            'li', ['exercises', wrapWith('ul', exercise_links)])
+        return exercise_html
+    else:
+        return None
+
+
 def main():
     """
     ファイル構成によって、トップディレクトリのindex.htmlを自動生成する
@@ -52,14 +69,19 @@ def main():
     chapters_html = []
     for chapter_dir in chapter_dirs:
         ch_dirs = [d for d in os.listdir(chapter_dir)
-                   if not d.startswith('.') and d != 'exercises']
+                   if d.startswith('ch')]
         ch_dirs.sort()
 
-        links = [HTML_LINK.substitute(
+        chapter_links = [CHAPTER_LINK.substitute(
             chapter=chapter_dir, ch=ch_dir) for ch_dir in ch_dirs]
-        list_items = [wrapWith('li', link) for link in links]
-        ul = wrapWith('ul', list_items)
-        chapter_html = wrapWith('li', [chapter_dir, ul])
+        chapter_list_items = [wrapWith('li', link) for link in chapter_links]
+
+        exercises_html = makeExercisesHtml(chapter_dir)
+        if exercises_html:
+            chapter_list_items.append(exercises_html)
+
+        chapter_ul = wrapWith('ul', chapter_list_items)
+        chapter_html = wrapWith('li', [chapter_dir, chapter_ul])
         chapters_html.append(chapter_html)
 
     children = wrapWith('ul', chapters_html)
